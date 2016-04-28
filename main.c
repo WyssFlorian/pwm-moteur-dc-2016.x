@@ -24,7 +24,7 @@ typedef enum {
  * @return AVANT ou ARRIERE.
  */
 Direction conversionDirection(unsigned char v) {
-    // À implémenter...
+    // À implémenter....
     return AVANT;
 }
 
