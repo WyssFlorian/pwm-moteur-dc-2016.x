@@ -63,11 +63,6 @@ static void hardwareInitialise() {
     TMR0L = 0x2C; 
 
     /* Compte les interruptions du temporisateur pour mesurer les secondes */
-
-   
-    
-    /*Routine des interruptions: Détecte de quelle interruption il s'agit puis 
-     appelle la fonction correspondante*/
     
     
     
