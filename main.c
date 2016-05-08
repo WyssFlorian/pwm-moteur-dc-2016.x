@@ -24,7 +24,9 @@ typedef enum {
  * @return AVANT ou ARRIERE.
  */
 Direction conversionDirection(unsigned char v) {
-    // À implémenter....
+    if (v<128){
+    return ARRIERE; 
+    }
     return AVANT;
 }
 
@@ -34,8 +36,10 @@ Direction conversionDirection(unsigned char v) {
  * @return Cycle de travail du PWM.
  */
 unsigned char conversionMagnitude(unsigned char v) {
-    // À implémenter...
-    return 0;
+    if (v < 128){
+    return 254-2*v;
+    }
+    return 2*v-256;
 }
 
 #ifndef TEST
@@ -51,44 +55,55 @@ static void hardwareInitialise() {
    
     TRISC = 0x00; //Configure le port C comme sortie digitale
     
+    /*Configuration du Fosc à 1 MHz*/
+    
+    OSCCONbits.IRCF = 3; //inTosc à 1 MHz (facultatif val par défault = 1 MHz)
+    OSCCONbits.SCS = 2; //Choix de l'scillateur interne (facultatif)
+    
     // Prépare Temporisateur 2 pour PWM (compte jusqu'à 255 en 1ms):
     
-    T2CONbits.TMR0ON = 1; //active le timer 0.
-    T2CONbits.T0CS = 0; //On utilise Fosc/4 comme source
-    T2CONbits.PSA = 1; //Pas de diviseur de fréquence
+    T2CONbits.TMR2ON = 1; //active le timer 2.
+    T2CONbits.T2CKPS = 0; //Pas de diviseur de fréquence de FOSC/4
+    T2CONbits.T2OUTPS = 9;// Postscaler d'interruptions à 1/10 = 10 ms (p.177))
     
-    //Etablit le compteur du timer 0 pour un débordement 
+    // PR2=255; (Période en "pas" ou en définissant la valeur du compteur ?)
     
+    //Etablit le compteur du timer pour un débordement à 255 
     TMR0H = 0xFC; //TMR0 =655036-[(255*4)/1E6] = 64556 = FC2C [exadécimal] 
-    TMR0L = 0x2C; 
-
-    /* Compte les interruptions du temporisateur pour mesurer les secondes */
-    
-    
+    TMR0L = 0x2C;
     
     // Configure PWM 1 pour émettre un signal de 1KHz:
-    // À faire...
+    
+    /*Active le PWM sur CCP1*/
+    CCPTMRS0bits.C1TSEL = 0; // Raccorde le CCP1 sur TM2 (p202)
+    CCP1CONbits.P1M = 0; // PWM simple, sortie uniquement sur P1A.
+    CCP1CONbits.CCP1M = 0; // P1A est actif à niveau haut.
+    CCP1CONbits.DC1B = 0; // 2 bits les - sign. pour préc. le cyc. de travail
 
     // Configure RC0 et RC1 pour gérer la direction du moteur:
-    // À faire...
+    
+    TRISCbits.RC0=0; //RC0 mise en sortie
+    TRISCbits.RC1=0; //RC1 mise en sortie
     
     // Active le module de conversion A/D:
     
+    TRISBbits.RB3=1; //RB3 en entrée
     ADCON0bits.ADON = 1; //allume le module A/D
     ADCON0bits.CHS = 9; //branche le convertisseur sur AN9
     ADCON2bits.ADFM = 1; //les 8 bits les moins signifiants sont sur ADRESL
+    ADCON1bits.PVCFG=0; // Vref+ en interne sur VDD (p297)
+    ADCON1bits.NVCFG=0; // Vref- sur Vss (0V)
     ADCON2bits.ACQT = 2; //temps d'acquisiton à 4 TAD
     ADCON2bits.ADCS = 0; // À 1 MHz, le TAD est à 2 us
 
     // Active les interruptions générales:
     
-     RCONbits.IPEN = 0; //Désactive le mode Haute / Basse priorité.
-    INTCONbits.GIEH = 0; //Désactive les interruptions hautes priorité.
-    INTCONbits.GIEL = 1; //Active les interruptions basses priorité.
+    RCONbits.IPEN = 1; //Gère les alarmes en mode Basse priorité.
+    INTCONbits.GIE = 1; //Active les interruptions.
+    INTCONbits.PEIE = 1; //Active les interruptions périphériques.
     
-    INTCONbits.TMR0IE = 1; //Active les interruptions timer 0.
+    PIE1bits.TMR2IE = 1; //Active les interruptions timer 2.
     PIE1bits.ADIE = 1; //Active les interruptions A/D.
-    IPR1bits.ADIP = 1; //Interr. A/D sont de haute priorité.
 }
 
 /**
